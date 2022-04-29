@@ -41,7 +41,7 @@
 //     "Message": {"Value": teams}
 // }
 
-var request = require('request');
+var axios = require('axios');
 var baseUrl = 'http://localhost:16208/gateway/2.2.0/publish';
 var gateways = ["10.97.3.15", "10.97.3.16", "10.97.3.17"]; //probably need just one gateway, the one set as server?
 
@@ -51,13 +51,13 @@ var engines = [];
 //Helper functions:
 
 //These functions are useful for performing get requests:
-// function topicToUrl(topic){
-//     var urlTail = "?";
-//     for (const [key, value] of Object.entries(topic)){
-//         urlTail += key + "=" + value + "&";
-//     }
-//     return baseUrl + urlTail.slice(0, -1);
-// }
+function topicToUrl(topic){
+    var urlTail = "?";
+    for (const [key, value] of Object.entries(topic)){
+        urlTail += key + "=" + value + "&";
+    }
+    return baseUrl + urlTail.slice(0, -1);
+}
 
 // function zmqFrameToUrl(topic, message){
 //     var urlTail = "?";
@@ -73,13 +73,12 @@ var engines = [];
 
 function buildStoreGetTopic(name){
     var topic = {Type: "Get", Target: "Store", Name: name};
-    //return JSON.stringify(topic);
     return topic;
 }
 
 function buildStoreSetTopic(name){
     var topic = {Type: "Set", Target: "Store", Name: name};
-    return JSON.stringify(topic);
+    return topic;
 }
 
 function buildCallFunctionTopic(targetEngine){
@@ -122,33 +121,6 @@ function buildPayload(topic, message){
 //     });
 // }
 
-function getOnlineEngines(){
-    var topic = buildStoreGetTopic("ConnectedClients");
-    var message = {};
-    console.log("Looking for online engines using POST request...");
-    request.post({
-        url: baseUrl,
-        body: buildPayload(topic, message),
-        json: true
-    }, (error, response, body) => {
-        if (error) {
-            console.log(error);
-        }
-        else {
-            var message = body[0]["Message"]["Value"];
-            message.forEach(object => {
-                if (object["Role"] == "Engine"){
-                    engines.push(object["Name"]);
-                }
-            });
-            console.log("Found currently running engines:");
-            for (let i = 0; i < engines.length; i++){
-                console.log(engines[i]);
-            }
-        }
-    });
-}
-
 // function callBpFunctionOld(targetEngine, targetObject, functionName, functionArguments){
 //     let topic = buildCallFunctionTopic(targetEngine);
 //     console.log(topic);
@@ -165,21 +137,37 @@ function getOnlineEngines(){
 //         //console.log(body[0]);
 //     });
 // }
+//End of helper functions;
+
+function getOnlineEngines(){
+    var topic = buildStoreGetTopic("ConnectedClients");
+    var message = {};
+    console.log("Looking for online engines using POST request...");
+    axios.post(baseUrl, buildPayload(topic, message)).catch(error => {
+        if (error){
+            console.log(error);
+        }
+    }).then(response => {
+        var message = response.data[0]["Message"]["Value"];
+        message.forEach(object => {
+            if (object["Role"] == "Engine"){
+                engines.push(object["Name"]);
+            }
+        });
+        console.log("Found currently running engines:");
+        for (let i = 0; i < engines.length; i++){
+            console.log(engines[i]);
+        };
+    });
+}
 
 function callBpFunction(targetEngine, targetObject, functionName, functionArguments){
     let payload = buildCallFunctionPayload(targetEngine, targetObject, functionName, functionArguments);
     console.log(payload);
-    request.post({
-        url: baseUrl,
-        body: payload,
-        json: true
-    }, (error, response, body) => {
-        if (error){
-            console.log(error);
-        }
-        else {
-            console.log(body);
-        }
+    axios.post(baseUrl, payload).catch(error => {
+        console.log(error);
+    }).then(response=>{
+        console.log(response.data);
     });
 }
 
@@ -187,28 +175,28 @@ function callBpFunctionBroadcast(targetEnginesArray, targetObject, functionName,
     targetEnginesArray.forEach(engine => {
         let payload = buildCallFunctionPayload(engine, targetObject, functionName, functionArguments);
         console.log(payload);
-        request.post({
-            url: baseUrl,
-            body: payload,
-            json: true
-        }, (error, response, body) => {
-            if (error){
-                console.log(error);
-            }
-            else {
-                console.log(body);
-            }
+        axios.post(baseUrl, payload).catch(error => {
+            console.log(error);
+        }).then(response=>{
+            console.log(response.data);
         });
     })
 }
-//End of helper functions;
 
-getOnlineEngines();
+function saveToStore(location, data){
+    let topic = buildStoreSetTopic(location);
+    let message = {"Value": data};
+    let payload = buildPayload(topic, message);
+    axios.post(baseUrl, payload).catch(error => {
+        console.log(error);
+    }).then(response => {
+        console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set data at " + location + " with response: ", response.data);
+    });
+}
 
-function testPixotopeGatewayInterface(){
-    callBpFunctionBroadcast(["~LOCAL~-Engine"], "BP_ViaCallFunctionWithActor_2", "Example4Function", [90, 12, 1]);
-};
+async function loadFromStoreAsync(location){
+    let response = await axios.get(topicToUrl(buildStoreGetTopic(location)));
+    return response.data;
+}
 
-// setTimeout(() => {
-//     test();
-// }, 1000);
+module.exports={getOnlineEngines, callBpFunctionBroadcast, callBpFunction, saveToStore, loadFromStoreAsync};
