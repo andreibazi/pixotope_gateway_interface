@@ -59,16 +59,16 @@ function topicToUrl(topic){
     return baseUrl + urlTail.slice(0, -1);
 }
 
-// function zmqFrameToUrl(topic, message){
-//     var urlTail = "?";
-//     for (const [key, value] of Object.entries(topic)){
-//         urlTail += key + "=" + value + "&";
-//     }
-//     for (const [key, value] of Object.entries(message["Params"])){
-//         urlTail += "Param" + key + "=" + value + "&";
-//     }
-//     return baseUrl + urlTail.slice(0, -1);
-// }
+function zmqFrameToUrl(topic, message){
+    var urlTail = "?";
+    for (const [key, value] of Object.entries(topic)){
+        urlTail += key + "=" + value + "&";
+    }
+    for (const [key, value] of Object.entries(message["Params"])){
+        urlTail += "Param" + key + "=" + value + "&";
+    }
+    return baseUrl + urlTail.slice(0, -1);
+}
 //End of region
 
 function buildStoreGetTopic(name){
@@ -79,6 +79,31 @@ function buildStoreGetTopic(name){
 function buildStoreSetTopic(name){
     var topic = {Type: "Set", Target: "Store", Name: name};
     return topic;
+}
+
+// Equivalent python code:
+
+// import json, requests
+// url = "http://localhost:16208/gateway/2.0.0/publish"
+// payload = json.dumps({"Topic":{"Type":"Call","Target":"~LOCAL~-Engine","Method":"SetProperty","ID":""},
+//"Message":{"Params":{"ObjectSearch":"BP_ViaSetPropertyWithActor_2","PropertyPath":"ExampleVar","Value":77}}})
+// response = requests.request("POST", url, data=payload)
+// print(response.content)
+
+function buildGetPropertyTopic(engine){
+    return {Type: "Call", Target: engine, Method: "GetProperty"};
+}
+
+function buildSetPropertyTopic(engine){
+    return {Type: "Call", Target: engine, Method: "SetProperty"};
+}
+
+function buildGetPropertyMessage(objectName, propertyName){
+    return {"Params":{"ObjectSearch": objectName, "PropertyPath": propertyName}};
+}
+
+function buildSetPropertyMessage(objectName, propertyName, propertyValue){
+    return {"Params":{"ObjectSearch": objectName, "PropertyPath": propertyName, "Value": propertyValue}};
 }
 
 function buildCallFunctionTopic(targetEngine){
@@ -199,4 +224,22 @@ async function loadFromStoreAsync(location){
     return response.data;
 }
 
-module.exports={getOnlineEngines, callBpFunctionBroadcast, callBpFunction, saveToStore, loadFromStoreAsync};
+async function getPropertyAsync(engine, objectName, propertyName){
+    let topic = buildGetPropertyTopic(engine);
+    let message = buildGetPropertyMessage(objectName, propertyName);
+    let response = await axios.get(zmqFrameToUrl(topic, message));
+    return response.data;
+}
+
+function setProperty(engine, objectName, propertyName, propertyValue){
+    let topic = buildSetPropertyTopic(engine);
+    let message = buildSetPropertyMessage(objectName, propertyName, propertyValue);
+    let payload = buildPayload(topic, message);
+    axios.post(baseUrl, payload).catch(error => {
+        console.log(error);
+    }).then(response => {
+        console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set property " + propertyName + " on object " + objectName + " to value " + propertyValue, response.data);
+    });
+}
+
+module.exports={getOnlineEngines, callBpFunctionBroadcast, callBpFunction, saveToStore, loadFromStoreAsync, getPropertyAsync, setProperty};
