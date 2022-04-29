@@ -9,6 +9,10 @@
   "keywords": [
     "pixotope"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/andreibazi/pixotope_gateway_interface.git"
+  },
   "author": "Andrei Bazgan Sabin (Bazi)",
   "license": "ISC",
   "dependencies": {
