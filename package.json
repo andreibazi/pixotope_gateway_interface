@@ -1,0 +1,17 @@
+{
+  "name": "pixotope_gateway_interface",
+  "version": "1.0.0",
+  "description": "A collection of methods to make talking with Pixotope's Gateway HTTP interface easier",
+  "main": "pixotope_gateway_interface.js",
+  "scripts": {
+    "test": "node pixotope_gateway_interface.js"
+  },
+  "keywords": [
+    "pixotope"
+  ],
+  "author": "Andrei Bazgan Sabin (Bazi)",
+  "license": "ISC",
+  "dependencies": {
+    "request": "^2.88.2"
+  }
+}
