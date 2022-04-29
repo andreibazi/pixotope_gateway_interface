@@ -81,14 +81,13 @@ function buildStoreSetTopic(name){
     return topic;
 }
 
-// Equivalent python code:
+function buildStateGetTopic(engine, name){
+    return {Type: "Get", Target: engine, Name: name};
+}
 
-// import json, requests
-// url = "http://localhost:16208/gateway/2.0.0/publish"
-// payload = json.dumps({"Topic":{"Type":"Call","Target":"~LOCAL~-Engine","Method":"SetProperty","ID":""},
-//"Message":{"Params":{"ObjectSearch":"BP_ViaSetPropertyWithActor_2","PropertyPath":"ExampleVar","Value":77}}})
-// response = requests.request("POST", url, data=payload)
-// print(response.content)
+function buildStateSetTopic(engine, name){
+    return {Type: "Set", Target: engine, Name: name};
+}
 
 function buildGetPropertyTopic(engine){
     return {Type: "Call", Target: engine, Method: "GetProperty"};
@@ -126,42 +125,25 @@ function buildPayload(topic, message){
     return {Topic: topic, Message: message};
 }
 
-// function getOnlineEnginesGetRequest(){
-//     var url = baseUrl + topicToUrl(buildStoreGetTopic("ConnectedClients"));
-//     var topic = buildStoreGetTopic("ConnectedClients");
-//     var message = {};
-//     console.log("Looking for online engines using GET request...");
-//     request(url, function(error, res, body){
-//         //console.log(JSON.parse(body)[0]["Message"]["Value"]);
-//         var message = JSON.parse(body)[0]["Message"]["Value"];
-//         message.forEach(object => {
-//             if (object["Role"] == "Engine"){
-//                 engines.push(object["Name"]);
-//             }
-//         });
-//         console.log("Found currently running engines:");
-//         for (let i = 0; i < engines.length; i++){
-//             console.log(engines[i]);
-//         }
-//     });
-// }
-
-// function callBpFunctionOld(targetEngine, targetObject, functionName, functionArguments){
-//     let topic = buildCallFunctionTopic(targetEngine);
-//     console.log(topic);
-//     let message = buildCallFunctionMessage(targetObject, functionName, functionArguments);
-//     console.log(message);
-//     let url = zmqFrameToUrl(topic, message);
-//     console.log(url);
-//     request.post({
-//         url: url,
-//         body: {},
-//         json: true
-//     }, (error, response, body) => {
-//         console.log("Function " + functionName + " called on " + targetEngine + "!");
-//         //console.log(body[0]);
-//     });
-// }
+function getOnlineEnginesGetRequest(){
+    var url = baseUrl + topicToUrl(buildStoreGetTopic("ConnectedClients"));
+    var topic = buildStoreGetTopic("ConnectedClients");
+    var message = {};
+    console.log("Looking for online engines using GET request...");
+    request(url, function(error, res, body){
+        //console.log(JSON.parse(body)[0]["Message"]["Value"]);
+        var message = JSON.parse(body)[0]["Message"]["Value"];
+        message.forEach(object => {
+            if (object["Role"] == "Engine"){
+                engines.push(object["Name"]);
+            }
+        });
+        console.log("Found currently running engines:");
+        for (let i = 0; i < engines.length; i++){
+            console.log(engines[i]);
+        }
+    });
+}
 //End of helper functions;
 
 function getOnlineEngines(){
@@ -208,20 +190,37 @@ function callBpFunctionBroadcast(targetEnginesArray, targetObject, functionName,
     })
 }
 
-function saveToStore(location, data){
+function saveToStoreState(location, data){
     let topic = buildStoreSetTopic(location);
     let message = {"Value": data};
     let payload = buildPayload(topic, message);
     axios.post(baseUrl, payload).catch(error => {
         console.log(error);
     }).then(response => {
-        console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set data at " + location + " with response: ", response.data);
+        console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set data on store at " + location + " with response: ", response.data);
     });
 }
 
-async function loadFromStoreAsync(location){
+async function loadFromStoreStateAsync(location){
     let response = await axios.get(topicToUrl(buildStoreGetTopic(location)));
     return response.data;
+}
+
+function saveToEngineState(engine, location, data){
+    let topic = buildStateSetTopic(engine, location);
+    let message = {"Value": data};
+    let payload = buildPayload(topic, message);
+    axios.post(baseUrl, payload).catch(error => {
+        console.log(error);
+    }).then(response => {
+        console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set data on state at " + location + " with response: ", response.data);
+    });
+}
+
+async function loadFromEngineStateAsync(engine, location){
+    console.log(topicToUrl(buildStateGetTopic(engine, location)));
+    let response = await axios.get(topicToUrl(buildStateGetTopic(engine, location)));
+    return response;
 }
 
 async function getPropertyAsync(engine, objectName, propertyName){
@@ -242,4 +241,4 @@ function setProperty(engine, objectName, propertyName, propertyValue){
     });
 }
 
-module.exports={getOnlineEngines, callBpFunctionBroadcast, callBpFunction, saveToStore, loadFromStoreAsync, getPropertyAsync, setProperty};
+module.exports={getOnlineEngines, callBpFunctionBroadcast, callBpFunction, saveToStoreState, loadFromStoreStateAsync, getPropertyAsync, setProperty, loadFromEngineStateAsync, saveToEngineState};
