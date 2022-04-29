@@ -42,6 +42,7 @@
 // }
 
 var axios = require('axios');
+const { response } = require('express');
 var baseUrl = 'http://localhost:16208/gateway/2.2.0/publish';
 var gateways = ["10.97.3.15", "10.97.3.16", "10.97.3.17"]; //probably need just one gateway, the one set as server?
 
@@ -146,26 +147,18 @@ function getOnlineEnginesGetRequest(){
 }
 //End of helper functions;
 
-function getOnlineEngines(){
+async function getOnlineClientsAsync(){
     var topic = buildStoreGetTopic("ConnectedClients");
     var message = {};
     console.log("Looking for online engines using POST request...");
-    axios.post(baseUrl, buildPayload(topic, message)).catch(error => {
+    let response = await axios.post(baseUrl, buildPayload(topic, message)).catch(error => {
         if (error){
             console.log(error);
         }
-    }).then(response => {
-        var message = response.data[0]["Message"]["Value"];
-        message.forEach(object => {
-            if (object["Role"] == "Engine"){
-                engines.push(object["Name"]);
-            }
-        });
-        console.log("Found currently running engines:");
-        for (let i = 0; i < engines.length; i++){
-            console.log(engines[i]);
-        };
-    });
+    })//.then(response => {
+    //     
+    // });
+    return response.data;
 }
 
 function callBpFunction(targetEngine, targetObject, functionName, functionArguments){
@@ -208,7 +201,7 @@ async function loadFromStoreStateAsync(location){
 
 function saveToEngineState(engine, location, data){
     let topic = buildStateSetTopic(engine, location);
-    let message = {"Value": data};
+    let message = {"Value": data };
     let payload = buildPayload(topic, message);
     axios.post(baseUrl, payload).catch(error => {
         console.log(error);
@@ -241,4 +234,4 @@ function setProperty(engine, objectName, propertyName, propertyValue){
     });
 }
 
-module.exports={getOnlineEngines, callBpFunctionBroadcast, callBpFunction, saveToStoreState, loadFromStoreStateAsync, getPropertyAsync, setProperty, loadFromEngineStateAsync, saveToEngineState};
+module.exports={getOnlineClientsAsync, callBpFunctionBroadcast, callBpFunction, saveToStoreState, loadFromStoreStateAsync, getPropertyAsync, setProperty, loadFromEngineStateAsync, saveToEngineState};
