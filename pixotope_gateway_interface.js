@@ -158,13 +158,14 @@ function callBpFunctionBroadcast(targetEnginesArray, targetObject, functionName,
 async function callBpFunctionBroadcastAsync(targetEnginesArray, targetObject, functionName, functionArguments){
     try
     {
-        throw Error('***[PXG - ERROR]*** - Method \"callBpFunctionBroadcastAsync\" not implemented yet!');
-        // targetEnginesArray.forEach(engine => {
-        //     let payload = buildCallFunctionPayload(engine, targetObject, functionName, functionArguments);
-        //     console.log("***[PXG - CALL BP FUNCTION BROADCAST]*** - Sending %s to engines", payload);
-        //     let response = await axios.post(baseUrl, payload);
-        //     return response.data
-        // });
+        //throw Error('***[PXG - ERROR]*** - Method \"callBpFunctionBroadcastAsync\" not implemented yet!');
+        for (const engine of targetEnginesArray)
+        {
+            let payload = buildCallFunctionPayload(engine, targetObject, functionName, functionArguments);
+            console.log("***[PXG - CALL BP FUNCTION BROADCAST ASYNC]*** - Sending %s to engines", payload);
+            let response = await axios.post(baseUrl, payload);
+            return response.data;
+        }
     }
     catch(error)
     {
@@ -198,8 +199,8 @@ async function saveToStoreStateAsync(location, data){
 }
 
 
-function loadFromStoreState(location){
-    axios.get(topicToUrl(buildStoreGetTopic(location))).catch(error => {console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while loading %s from Store state.", error, location);}).then(response => {if(response) return response.data;});
+function loadFromStoreState(location, callback){
+    axios.get(topicToUrl(buildStoreGetTopic(location))).catch(error => {console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while loading %s from Store state.", error, location);}).then(response => {if(response) {callback(response.data);} else {callback(null);}});
 }
 
 async function loadFromStoreStateAsync(location){
@@ -240,8 +241,8 @@ async function saveToEngineStateAsync(engine, location, data){
 }
 
 
-function loadFromEngineState(engine, location){
-    axios.get(topicToUrl(buildStateGetTopic(engine, location))).catch(error =>{console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while loading %s from engine %s state.", error, location, engine);return null;}).then(response => {if(response) return response.data;});
+function loadFromEngineState(engine, location, callback){
+    axios.get(topicToUrl(buildStateGetTopic(engine, location))).catch(error =>{console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while loading %s from engine %s state.", error, location, engine);return null;}).then(response => {if(response){callback(response.data);} else {callback(null);}});
 }
 
 async function loadFromEngineStateAsync(engine, location){
@@ -259,10 +260,10 @@ async function loadFromEngineStateAsync(engine, location){
 }
 
 
-function getProperty(engine, objectName, propertyName){
+function getProperty(engine, objectName, propertyName, callback){
     let topic = buildGetPropertyTopic(engine);
     let message = buildGetPropertyMessage(objectName, propertyName);
-    axios.get(zmqFrameToUrl(topic, message)).catch(error => {console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while getting property %s from actor %s of engine %s.", error, propertyName, objectName, engine);return null;}).then(response => {if(response) return response.data;});
+    axios.get(zmqFrameToUrl(topic, message)).catch(error => {console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while getting property %s from actor %s of engine %s.", error, propertyName, objectName, engine);return null;}).then(response => {if(response){callback(response.data);} else {callback(null);}});
 }
 
 async function getPropertyAsync(engine, objectName, propertyName){
