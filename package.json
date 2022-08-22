@@ -1,7 +1,7 @@
 {
   "name": "pixotope_gateway_interface",
   "version": "1.0.0",
-  "description": "A collection of methods to make talking with Pixotope's Gateway HTTP interface easier",
+  "description": "A small package that facilitates the interaction between your Node app and Pixotope via the Pixotope Gateway",
   "main": "pixotope_gateway_interface.js",
   "scripts": {
     "test": "node pixotope_gateway_interface.js"
