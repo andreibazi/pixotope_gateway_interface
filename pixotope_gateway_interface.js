@@ -104,16 +104,19 @@ function buildPayload(topic, message){
 }
 //End of helper functions;
 
+
+function getOnlineClients(){
+    var topic = buildStoreGetTopic("ConnectedClients");
+    var message = {};
+    axios.post(baseUrl, buildPayload(topic, message)).catch(error => {console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while looking for online clients.", error); return null;}).then(response => {if(response) return response.data;})
+}
+
 async function getOnlineClientsAsync(){
     var topic = buildStoreGetTopic("ConnectedClients");
     var message = {};
     try
     {
-        let response = await axios.post(baseUrl, buildPayload(topic, message)).catch(error => {
-            if (error){
-                throw error;
-            }
-        });   
+        let response = await axios.post(baseUrl, buildPayload(topic, message));
         return response.data;
     }
     catch(error)
@@ -123,14 +126,18 @@ async function getOnlineClientsAsync(){
     }
 }
 
+
 function callBpFunction(targetEngine, targetObject, functionName, functionArguments){
-    try{
-        let payload = buildCallFunctionPayload(targetEngine, targetObject, functionName, functionArguments);
-        axios.post(baseUrl, payload).catch(error => {
-            throw error;
-        }).then(response=>{
-            return response.data;
-        });
+    let payload = buildCallFunctionPayload(targetEngine, targetObject, functionName, functionArguments);
+    axios.post(baseUrl, payload).catch(error => {console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while calling Blueprint function %s with arguments %s on object %s and engine %s.", error, functionName, functionArguments, targetObject, targetEngine); return null;}).then(response=>{if(response) return response.data;});
+}
+
+async function callBpFunctionAsync(targetEngine, targetObject, functionName, functionArguments){
+    let payload = buildCallFunctionPayload(targetEngine, targetObject, functionName, functionArguments);
+    try
+    {
+        let response = await axios.post(baseUrl, payload)
+        return response.data;
     }
     catch(error)
     {
@@ -139,17 +146,25 @@ function callBpFunction(targetEngine, targetObject, functionName, functionArgume
     }
 }
 
+
 function callBpFunctionBroadcast(targetEnginesArray, targetObject, functionName, functionArguments){
-    try{
-        targetEnginesArray.forEach(engine => {
-            let payload = buildCallFunctionPayload(engine, targetObject, functionName, functionArguments);
-            console.log("***[PXG - CALL BP FUNCTION BROADCAST]*** - Sending %s to engines", payload);
-            axios.post(baseUrl, payload).catch(error => {
-                throw error;
-            }).then(response=>{
-                return response.data;
-            });
-        })
+    targetEnginesArray.forEach(engine => {
+        let payload = buildCallFunctionPayload(engine, targetObject, functionName, functionArguments);
+        console.log("***[PXG - CALL BP FUNCTION BROADCAST]*** - Sending %s to engines %s", payload, targetEnginesArray);
+        axios.post(baseUrl, payload).catch(error=>{console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while calling Blueprint function %s with arguments %s on object %s and engines %s.", error, functionName, functionArguments, targetObject, targetEnginesArray); return null;}).then(response=>{if(response) return response.data;});
+    });
+}
+
+async function callBpFunctionBroadcastAsync(targetEnginesArray, targetObject, functionName, functionArguments){
+    try
+    {
+        throw Error('***[PXG - ERROR]*** - Method \"callBpFunctionBroadcastAsync\" not implemented yet!');
+        // targetEnginesArray.forEach(engine => {
+        //     let payload = buildCallFunctionPayload(engine, targetObject, functionName, functionArguments);
+        //     console.log("***[PXG - CALL BP FUNCTION BROADCAST]*** - Sending %s to engines", payload);
+        //     let response = await axios.post(baseUrl, payload);
+        //     return response.data
+        // });
     }
     catch(error)
     {
@@ -158,17 +173,22 @@ function callBpFunctionBroadcast(targetEnginesArray, targetObject, functionName,
     }
 }
 
+
 function saveToStoreState(location, data){
+    let topic = buildStoreSetTopic(location);
+    let message = {"Value": data};
+    let payload = buildPayload(topic, message);
+    axios.post(baseUrl, payload).catch(error => {console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while saving %s to Store state at location %s.", error, data, location); return null;}).then(response =>{if (response){return response.data;} else {return null;}});
+}
+
+async function saveToStoreStateAsync(location, data){
     let topic = buildStoreSetTopic(location);
     let message = {"Value": data};
     let payload = buildPayload(topic, message);
     try
     {
-        axios.post(baseUrl, payload).catch(error => {
-            throw error;
-        }).then(response => {
-            return response.data;
-        });
+        let response = await axios.post(baseUrl, payload);
+        return response.data;
     }
     catch(error)
     {
@@ -177,10 +197,15 @@ function saveToStoreState(location, data){
     }
 }
 
+
+function loadFromStoreState(location){
+    axios.get(topicToUrl(buildStoreGetTopic(location))).catch(error => {console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while loading %s from Store state.", error, location);}).then(response => {if(response) return response.data;});
+}
+
 async function loadFromStoreStateAsync(location){
     try
     {
-        let response = await axios.get(topicToUrl(buildStoreGetTopic(location))).catch(error => {throw error;});
+        let response = await axios.get(topicToUrl(buildStoreGetTopic(location)));
         return response.data;
     }
     catch(error)
@@ -190,16 +215,22 @@ async function loadFromStoreStateAsync(location){
     }
 }
 
+
 function saveToEngineState(engine, location, data){
     let topic = buildStateSetTopic(engine, location);
     let message = {"Value": data };
     let payload = buildPayload(topic, message);
-    try{
-        axios.post(baseUrl, payload).catch(error => {
-            throw error;
-        }).then(response => {
-            return response.data;
-        });
+    axios.post(baseUrl, payload).catch(error =>{console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while saving %s to engine %s state at location %s.", error, data, engine, location); return null;}).then(response => {return response.data;});
+}
+
+async function saveToEngineStateAsync(engine, location, data){
+    let topic = buildStateSetTopic(engine, location);
+    let message = {"Value": data };
+    let payload = buildPayload(topic, message);
+    try
+    {
+        let response = await axios.post(baseUrl, payload);
+        return response.data;
     }
     catch(error)
     {
@@ -208,13 +239,16 @@ function saveToEngineState(engine, location, data){
     }
 }
 
+
+function loadFromEngineState(engine, location){
+    axios.get(topicToUrl(buildStateGetTopic(engine, location))).catch(error =>{console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while loading %s from engine %s state.", error, location, engine);return null;}).then(response => {if(response) return response.data;});
+}
+
 async function loadFromEngineStateAsync(engine, location){
     console.log(topicToUrl(buildStateGetTopic(engine, location)));
     try
     {
-        let response = await axios.get(topicToUrl(buildStateGetTopic(engine, location))).catch(error => {
-            throw error;
-        });
+        let response = await axios.get(topicToUrl(buildStateGetTopic(engine, location)));
         return response;
     }
     catch(error)
@@ -224,14 +258,19 @@ async function loadFromEngineStateAsync(engine, location){
     }
 }
 
+
+function getProperty(engine, objectName, propertyName){
+    let topic = buildGetPropertyTopic(engine);
+    let message = buildGetPropertyMessage(objectName, propertyName);
+    axios.get(zmqFrameToUrl(topic, message)).catch(error => {console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while getting property %s from actor %s of engine %s.", error, propertyName, objectName, engine);return null;}).then(response => {if(response) return response.data;});
+}
+
 async function getPropertyAsync(engine, objectName, propertyName){
     let topic = buildGetPropertyTopic(engine);
     let message = buildGetPropertyMessage(objectName, propertyName);
     try
     {
-        let response = await axios.get(zmqFrameToUrl(topic, message)).catch(error => {
-            throw error;
-        });
+        let response = await axios.get(zmqFrameToUrl(topic, message));
         return response.data;
     }
     catch(error)
@@ -241,16 +280,22 @@ async function getPropertyAsync(engine, objectName, propertyName){
     }
 }
 
+
 function setProperty(engine, objectName, propertyName, propertyValue){
     let topic = buildSetPropertyTopic(engine);
     let message = buildSetPropertyMessage(objectName, propertyName, propertyValue);
     let payload = buildPayload(topic, message);
-    try{
-        axios.post(baseUrl, payload).catch(error => {
-            throw error;
-        }).then(response => {
-            return response.data;
-        });
+    axios.post(baseUrl, payload).catch(error => {console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while setting property %s to value %s in actor %s of engine %s.", error, propertyName, value, objectName, engine); return null;}).then(response =>{if(response) return response.data;});
+}
+
+async function setPropertyAsync(engine, objectName, propertyName, propertyValue){
+    let topic = buildSetPropertyTopic(engine);
+    let message = buildSetPropertyMessage(objectName, propertyName, propertyValue);
+    let payload = buildPayload(topic, message);
+    try
+    {
+        let response = await axios.post(baseUrl, payload);
+        return response.data;
     }
     catch(error)
     {
@@ -259,4 +304,5 @@ function setProperty(engine, objectName, propertyName, propertyValue){
     }
 }
 
-module.exports={getOnlineClientsAsync, callBpFunctionBroadcast, callBpFunction, saveToStoreState, loadFromStoreStateAsync, getPropertyAsync, setProperty, loadFromEngineStateAsync, saveToEngineState};
+
+module.exports={getOnlineClients, getOnlineClientsAsync, callBpFunctionBroadcast, callBpFunctionBroadcastAsync, callBpFunction, callBpFunctionAsync, saveToStoreState, saveToStoreStateAsync, loadFromStoreState, loadFromStoreStateAsync, getProperty, getPropertyAsync, setProperty, setPropertyAsync, loadFromEngineState, loadFromEngineStateAsync, saveToEngineState, saveToEngineStateAsync};
