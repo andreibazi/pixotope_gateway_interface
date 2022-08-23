@@ -150,7 +150,7 @@ async function callBpFunctionAsync(targetEngine, targetObject, functionName, fun
 function callBpFunctionBroadcast(targetEnginesArray, targetObject, functionName, functionArguments){
     targetEnginesArray.forEach(engine => {
         let payload = buildCallFunctionPayload(engine, targetObject, functionName, functionArguments);
-        console.log("***[PXG - CALL BP FUNCTION BROADCAST]*** - Sending %s to engines %s", payload, targetEnginesArray);
+        console.log("***[PXG - CALL BP FUNCTION BROADCAST]*** - Sending %s to engines %s", JSON.stringify(payload), targetEnginesArray);
         axios.post(baseUrl, payload).catch(error=>{console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while calling Blueprint function %s with arguments %s on object %s and engines %s.", error, functionName, functionArguments, targetObject, targetEnginesArray); return null;}).then(response=>{if(response) return response.data;});
     });
 }
@@ -162,7 +162,7 @@ async function callBpFunctionBroadcastAsync(targetEnginesArray, targetObject, fu
         for (const engine of targetEnginesArray)
         {
             let payload = buildCallFunctionPayload(engine, targetObject, functionName, functionArguments);
-            console.log("***[PXG - CALL BP FUNCTION BROADCAST ASYNC]*** - Sending %s to engines", payload);
+            console.log("***[PXG - CALL BP FUNCTION BROADCAST ASYNC]*** - Sending %s to engines", JSON.stringify(payload));
             let response = await axios.post(baseUrl, payload);
             return response.data;
         }
@@ -221,7 +221,7 @@ function saveToEngineState(engine, location, data){
     let topic = buildStateSetTopic(engine, location);
     let message = {"Value": data };
     let payload = buildPayload(topic, message);
-    axios.post(baseUrl, payload).catch(error =>{console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while saving %s to engine %s state at location %s.", error, data, engine, location); return null;}).then(response => {return response.data;});
+    axios.post(baseUrl, payload).catch(error =>{console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while saving %s to engine %s state at location %s.", error, data, JSON.stringify(payload), location); return null;}).then(response => {return response.data;});
 }
 
 async function saveToEngineStateAsync(engine, location, data){
@@ -235,7 +235,7 @@ async function saveToEngineStateAsync(engine, location, data){
     }
     catch(error)
     {
-        console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while saving %s to engine %s state at location %s.", error, data, engine, location);
+        console.log("***[PXG - ERROR]*** - Ran into error \"%s\" while saving %s to engine %s state at location %s.", error, JSON.stringify(payload), engine, location);
         return null;
     }
 }
