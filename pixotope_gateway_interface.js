@@ -44,13 +44,19 @@
 var axios = require('axios');
 const { response } = require('express');
 var baseUrl = 'http://localhost:16208/gateway/2.2.0/publish';
-var gateways = ["10.97.3.15", "10.97.3.16", "10.97.3.17"]; //probably need just one gateway, the one set as server?
-
-//Aici salvam motoarele online:
-var engines = [];
 
 //Helper functions:
+function logError(error){
+    console.log("[ERROR] Received the following error code:", error.code);
+}
 
+function parseResponse(response){
+    if (!response){
+        console.log("[CLIENTS] Please make sure Pixotope is running!");
+        return null;
+    }
+    return response.data;
+}
 //These functions are useful for performing get requests:
 function topicToUrl(topic){
     var urlTail = "?";
@@ -126,6 +132,7 @@ function buildPayload(topic, message){
     return {Topic: topic, Message: message};
 }
 
+var engines = [];
 function getOnlineEnginesGetRequest(){
     var url = baseUrl + topicToUrl(buildStoreGetTopic("ConnectedClients"));
     var topic = buildStoreGetTopic("ConnectedClients");
@@ -150,24 +157,30 @@ function getOnlineEnginesGetRequest(){
 async function getOnlineClientsAsync(){
     var topic = buildStoreGetTopic("ConnectedClients");
     var message = {};
-    console.log("Looking for online engines using POST request...");
+    console.log("[CLIENTS] Asking Pixotope Gateway for a list of online engines...");
     let response = await axios.post(baseUrl, buildPayload(topic, message)).catch(error => {
-        if (error){
-            console.log(error);
-        }
-    })//.then(response => {
-    //     
-    // });
-    return response.data;
+        logError(error);
+    });
+    // if (!response){
+    //     console.log("[CLIENTS] Please make sure Pixotope is running!");
+    //     return null;
+    // }
+    // console.log("[CLIENTS] Online engines: ", JSON.stringify(response.data));
+    // return response.data;
+    let parsedResponse = parseResponse(response);
+    return parsedResponse;
 }
 
 function callBpFunction(targetEngine, targetObject, functionName, functionArguments){
     let payload = buildCallFunctionPayload(targetEngine, targetObject, functionName, functionArguments);
     console.log(payload);
     axios.post(baseUrl, payload).catch(error => {
-        console.log(error);
+        logError(error);
     }).then(response=>{
-        console.log(response.data);
+        let parsedResponse = parseResponse(response);
+        if (parsedResponse){
+            console.log(parsedResponse);
+        }
     });
 }
 
@@ -176,9 +189,12 @@ function callBpFunctionBroadcast(targetEnginesArray, targetObject, functionName,
         let payload = buildCallFunctionPayload(engine, targetObject, functionName, functionArguments);
         console.log(payload);
         axios.post(baseUrl, payload).catch(error => {
-            console.log(error);
+            logError(error);
         }).then(response=>{
-            console.log(response.data);
+            let parsedResponse = parseResponse(response);
+            if (parsedResponse){
+                console.log(parsedResponse);
+            }
         });
     })
 }
@@ -188,15 +204,21 @@ function saveToStoreState(location, data){
     let message = {"Value": data};
     let payload = buildPayload(topic, message);
     axios.post(baseUrl, payload).catch(error => {
-        console.log(error);
+        console.log("[ERROR] Received the following error code:", error.code);
     }).then(response => {
+        let parsedResponse = parseResponse(response);
+        if (!parsedResponse){
+            return false;
+        }
         console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set data on store at " + location + " with response: ", response.data);
+        return true;
     });
 }
 
 async function loadFromStoreStateAsync(location){
     let response = await axios.get(topicToUrl(buildStoreGetTopic(location)));
-    return response.data;
+    let parsedResponse = parseResponse(response);
+    return parsedResponse;
 }
 
 function saveToEngineState(engine, location, data){
@@ -204,15 +226,21 @@ function saveToEngineState(engine, location, data){
     let message = {"Value": data };
     let payload = buildPayload(topic, message);
     axios.post(baseUrl, payload).catch(error => {
-        console.log(error);
+        logError(error);
     }).then(response => {
-        console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set data on state at " + location + " with response: ", response.data);
+        let parsedResponse = parseResponse(response);
+        if (parsedResponse){
+            console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set data on state at " + location + " with response: ", parsedResponse);
+        }
     });
 }
 
 async function loadFromEngineStateAsync(engine, location){
     console.log(topicToUrl(buildStateGetTopic(engine, location)));
     let response = await axios.get(topicToUrl(buildStateGetTopic(engine, location)));
+    if (!response){
+        return null;
+    }
     return response;
 }
 
@@ -220,7 +248,8 @@ async function getPropertyAsync(engine, objectName, propertyName){
     let topic = buildGetPropertyTopic(engine);
     let message = buildGetPropertyMessage(objectName, propertyName);
     let response = await axios.get(zmqFrameToUrl(topic, message));
-    return response.data;
+    let parsedResponse = parseResponse(response);
+    return parsedResponse;
 }
 
 function setProperty(engine, objectName, propertyName, propertyValue){
@@ -228,9 +257,10 @@ function setProperty(engine, objectName, propertyName, propertyValue){
     let message = buildSetPropertyMessage(objectName, propertyName, propertyValue);
     let payload = buildPayload(topic, message);
     axios.post(baseUrl, payload).catch(error => {
-        console.log(error);
+        logError(error);
     }).then(response => {
-        console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set property " + propertyName + " on object " + objectName + " to value " + propertyValue, response.data);
+        let parsedResponse = parseResponse(response);
+        console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set property " + propertyName + " on object " + objectName + " to value " + propertyValue, parsedResponse);
     });
 }
 
