@@ -1,45 +1,8 @@
-//Helpers:
-//Set property:
-//request('http://localhost:16208/gateway/2.0/publish?Type=Set&Target=Store&Name=State.CSGOMAJOR.Teams.Team1.Player0.HLTVR&Value="1"', function (error, response, body){
-//});
+//Pixotope Gateway v1.1a
+//Written by Andrei Bazi
 
-//Get property:
-//request('http://localhost:16208/gateway/2.0/publish?Type=Get&Target=Store&Name=State.CSGOMAJOR.Teams.Team1.Player0.HLTVR', function (error, response, body){
-    //console.log(JSON.parse(body)[0]["Message"]["Value"]);
-//});
-
-//Call function:
-//request('http://localhost:16208/gateway/2.0.0/publish?Type=Call&Target=~LOCAL~-Engine&Method=CallFunction&ParamObjectSearch=BP_ViaCallFunctionWithActor_2&ParamFunctionName=Example4Function&ParamFunctionArguments=[2]')
-
-
-//http://localhost:16208/gateway/2.0.0/publish?Type=Call&Target=~LOCAL~-Engine&Method=CallFunction&ParamObjectSearch=BP_ViaCallFunctionWithActor_2&ParamFunctionName=Example4Function&ParamFunctionArguments=[2,%20{%22Value%22:%22TEST%22},%2010]
-
-// var payload2 = {
-//     "Topic": {"Type":"Call","Target":"~LOCAL~-Engine","Method":"CallFunction"},
-//     "Message": {"Params":{"ObjectSearch":"BP_TESTBP", "FunctionName": "PrintResult", "FunctionArguments": [JSON.stringify({"Player0": "S1mple", "Player1": "Miracle"}), 12, 13]}}
-// };
-
-// setInterval(function(){
-//     request.post({
-//         url: url,
-//         body: payload3,
-//         json: true}, (error, response, body) =>
-//         {
-//             console.log(body[0]);
-//         });
-// }, 1000);
-
-// var teams = {
-//     "team0": "fnatic",
-//     "team1": "virtus pro",
-//     "team2": "mouz",
-//     "team3": "heroic"
-// };
-
-// var payload3 = {
-//     "Topic": {"Type":"Set","Target":"Store","Name":"State.Bazi.CSGO.Teams"},
-//     "Message": {"Value": teams}
-// }
+//This small package facilitates the interaction between your Node.JS app and Pixotope, allowing for custom-built control panels that leverage the power of code and extend the functionality provided by the built-in Pixotope control panels. 
+//This is currently under development. While still not perfect, I'm constantly testing this package live in broadcast, expanding it to suit my needs.
 
 var axios = require('axios');
 const { response } = require('express');
@@ -76,7 +39,6 @@ function zmqFrameToUrl(topic, message){
     }
     return baseUrl + urlTail.slice(0, -1);
 }
-//End of region
 
 function buildStoreGetTopic(name){
     var topic = {Type: "Get", Target: "Store", Name: name};
@@ -131,28 +93,8 @@ function buildCallFunctionPayload(targetEngine, objectName, functionName, functi
 function buildPayload(topic, message){
     return {Topic: topic, Message: message};
 }
-
-var engines = [];
-function getOnlineEnginesGetRequest(){
-    var url = baseUrl + topicToUrl(buildStoreGetTopic("ConnectedClients"));
-    var topic = buildStoreGetTopic("ConnectedClients");
-    var message = {};
-    console.log("Looking for online engines using GET request...");
-    request(url, function(error, res, body){
-        //console.log(JSON.parse(body)[0]["Message"]["Value"]);
-        var message = JSON.parse(body)[0]["Message"]["Value"];
-        message.forEach(object => {
-            if (object["Role"] == "Engine"){
-                engines.push(object["Name"]);
-            }
-        });
-        console.log("Found currently running engines:");
-        for (let i = 0; i < engines.length; i++){
-            console.log(engines[i]);
-        }
-    });
-}
 //End of helper functions;
+
 
 async function getOnlineClientsAsync(){
     var topic = buildStoreGetTopic("ConnectedClients");
@@ -161,15 +103,10 @@ async function getOnlineClientsAsync(){
     let response = await axios.post(baseUrl, buildPayload(topic, message)).catch(error => {
         logError(error);
     });
-    // if (!response){
-    //     console.log("[CLIENTS] Please make sure Pixotope is running!");
-    //     return null;
-    // }
-    // console.log("[CLIENTS] Online engines: ", JSON.stringify(response.data));
-    // return response.data;
     let parsedResponse = parseResponse(response);
     return parsedResponse;
 }
+
 
 function callBpFunction(targetEngine, targetObject, functionName, functionArguments){
     let payload = buildCallFunctionPayload(targetEngine, targetObject, functionName, functionArguments);
@@ -183,6 +120,7 @@ function callBpFunction(targetEngine, targetObject, functionName, functionArgume
         }
     });
 }
+
 
 function callBpFunctionBroadcast(targetEnginesArray, targetObject, functionName, functionArguments){
     targetEnginesArray.forEach(engine => {
@@ -198,6 +136,7 @@ function callBpFunctionBroadcast(targetEnginesArray, targetObject, functionName,
         });
     })
 }
+
 
 function saveToStoreState(location, data){
     let topic = buildStoreSetTopic(location);
@@ -221,6 +160,7 @@ async function loadFromStoreStateAsync(location){
     return parsedResponse;
 }
 
+
 function saveToEngineState(engine, location, data){
     let topic = buildStateSetTopic(engine, location);
     let message = {"Value": data };
@@ -238,10 +178,8 @@ function saveToEngineState(engine, location, data){
 async function loadFromEngineStateAsync(engine, location){
     console.log(topicToUrl(buildStateGetTopic(engine, location)));
     let response = await axios.get(topicToUrl(buildStateGetTopic(engine, location)));
-    if (!response){
-        return null;
-    }
-    return response;
+    let parsedResponse = parseResponse(response);
+    return parsedResponse;
 }
 
 async function getPropertyAsync(engine, objectName, propertyName){
@@ -252,6 +190,7 @@ async function getPropertyAsync(engine, objectName, propertyName){
     return parsedResponse;
 }
 
+
 function setProperty(engine, objectName, propertyName, propertyValue){
     let topic = buildSetPropertyTopic(engine);
     let message = buildSetPropertyMessage(objectName, propertyName, propertyValue);
@@ -260,8 +199,11 @@ function setProperty(engine, objectName, propertyName, propertyValue){
         logError(error);
     }).then(response => {
         let parsedResponse = parseResponse(response);
-        console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set property " + propertyName + " on object " + objectName + " to value " + propertyValue, parsedResponse);
+        if (parsedResponse){
+            console.log("*** [PIXOTOPE GATEWAY] *** - Successfuly set property " + propertyName + " on object " + objectName + " to value " + propertyValue, parsedResponse);
+        }
     });
 }
+
 
 module.exports={getOnlineClientsAsync, callBpFunctionBroadcast, callBpFunction, saveToStoreState, loadFromStoreStateAsync, getPropertyAsync, setProperty, loadFromEngineStateAsync, saveToEngineState};

@@ -3,6 +3,7 @@
 ## What it is
 This repo is a collection of methods that aim to make interfacing with Pixotope's Gateway API much easier and quicker.
 
+This is currently under development. I'm constantly testing this package in real-life broadcast scenarios, fixing and expanding it to suit my needs.
 
 ## Sample code:
 ```
@@ -26,6 +27,3 @@ pixotope.loadFromEngineStateAsync("~LOCAL~-Engine", "State.ThirdParty.Examples.V
 
 pixotope.saveToEngineState("~LOCAL~-Engine", "State.ThirdParty.Examples.ViaEngine", "10");
 ```
-
-## To do
-Error handling
